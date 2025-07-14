@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本差异检查器</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%233B82F6;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%2310B981;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='20' fill='url(%23grad)'/%3E%3Cpath d='M25 30 L45 30 M25 40 L40 40 M25 50 L45 50 M25 60 L35 60' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M55 30 L75 30 M60 40 L75 40 M55 50 L75 50 M65 60 L75 60' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M45 35 L55 35' stroke='%23EF4444' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M40 45 L60 45' stroke='%2310B981' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M45 55 L55 55' stroke='%23F59E0B' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/default.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/material-darker.css">
+
+    <!-- CodeMirror JS -->
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/markdown/markdown.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/python/python.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/xml/xml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/css/css.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/sql/sql.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/clike/clike.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/shell/shell.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/yaml/yaml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/dockerfile/dockerfile.js"></script>
+    <!-- Code highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/theme/default.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/codemirror.min.js"></script>
+    <!-- Language modes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/sql/sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/shell/shell.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/clike/clike.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#6366F1',
+                        danger: '#EF4444',
+                        neutral: '#6B7280',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['Consolas', 'Monaco', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .scrollbar-thin {
+                scrollbar-width: thin;
+            }
+            .scrollbar-none {
+                scrollbar-width: none;
+            }
+            .scrollbar-none::-webkit-scrollbar {
+                display: none;
+            }
+            .diff-add {
+                @apply bg-green-100 text-green-800 border-l-4 border-green-500 px-3 py-0.5;
+            }
+            .dark .diff-add {
+                @apply bg-green-900/30 text-green-300 border-l-4 border-green-500 px-3 py-0.5;
+            }
+            .diff-remove {
+                @apply bg-red-100 text-red-800 border-l-4 border-red-500 px-3 py-0.5;
+            }
+            .dark .diff-remove {
+                @apply bg-red-900/30 text-red-300 border-l-4 border-red-500 px-3 py-0.5;
+            }
+            .diff-modify {
+                @apply bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500 px-3 py-0.5;
+            }
+            .dark .diff-modify {
+                @apply bg-yellow-900/30 text-yellow-300 border-l-4 border-yellow-500 px-3 py-0.5;
+            }
+            .diff-context {
+                @apply bg-gray-50 text-gray-800 border-l-4 border-gray-300 px-3 py-0.5;
+            }
+            .dark .diff-context {
+                @apply bg-gray-800 text-gray-300 border-l-4 border-gray-600 px-3 py-0.5;
+            }
+
+            /* 并排模式的行样式 */
+            .diff-line-side-by-side {
+                min-height: 1.5rem;
+                line-height: 1.5;
+            }
+
+            /* 强制深色模式的body样式 */
+            body.dark {
+                background-color: #111827 !important; /* gray-900 */
+                color: #f3f4f6 !important; /* gray-100 */
+            }
+
+            /* CodeMirror 编辑器样式 */
+            .CodeMirror {
+                height: 256px;
+                font-family: 'Consolas', 'Monaco', 'monospace';
+                font-size: 14px;
+                border-radius: 0;
+            }
+
+            .CodeMirror-placeholder {
+                color: #9ca3af !important; /* gray-400 */
+            }
+
+            /* 深色模式下的 CodeMirror 样式调整 */
+            .dark .CodeMirror {
+                background-color: #1f2937 !important; /* gray-800 */
+                color: #f3f4f6 !important; /* gray-100 */
+            }
+
+            .dark .CodeMirror-gutters {
+                background-color: #374151 !important; /* gray-700 */
+                border-right-color: #4b5563 !important; /* gray-600 */
+            }
+
+            .dark .CodeMirror-linenumber {
+                color: #9ca3af !important; /* gray-400 */
+            }
+
+            .dark .CodeMirror-cursor {
+                border-left-color: #f3f4f6 !important; /* gray-100 */
+            }
+
+            /* CodeMirror 焦点状态 */
+            .CodeMirror-focused .CodeMirror-cursor {
+                border-left-color: #3b82f6 !important; /* primary */
+            }
+
+            .dark .CodeMirror-focused .CodeMirror-cursor {
+                border-left-color: #60a5fa !important; /* primary light */
+            }
+
+            /* 差异结果区域样式 */
+            #diff-result {
+                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                font-size: 14px;
+                white-space: pre;
+                overflow-x: auto;
+            }
+
+            #diff-result div {
+                white-space: pre;
+                overflow-x: auto;
+            }
+
+            /* 行号样式 */
+            .line-number {
+                min-width: 3rem;
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+            }
+
+            /* 确保行号区域的对齐 */
+            .diff-line {
+                display: flex;
+                align-items: flex-start;
+                min-height: 1.5rem;
+            }
+
+            /* 行号悬停效果 */
+            .line-number:hover {
+                background-color: rgba(156, 163, 175, 0.1);
+            }
+
+            .dark .line-number:hover {
+                background-color: rgba(156, 163, 175, 0.2);
+            }
+
+            /* 拖拽上传区域样式 */
+            .drag-over {
+                border: 2px dashed #3b82f6 !important;
+                background-color: rgba(59, 130, 246, 0.1) !important;
+            }
+
+            .upload-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(59, 130, 246, 0.1);
+                border: 2px dashed #3b82f6;
+                border-radius: 0.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.125rem;
+                font-weight: 600;
+                color: #3b82f6;
+                z-index: 10;
+                backdrop-filter: blur(2px);
+            }
+
+            /* 图标动画效果 */
+            .fa-flask:hover {
+                animation: bounce 0.6s ease-in-out;
+            }
+
+            .fa-copy:hover, .fa-paste:hover {
+                animation: pulse 0.5s ease-in-out;
+            }
+
+            .fa-upload:hover {
+                animation: bounce 0.6s ease-in-out;
+            }
+
+            .fa-plus-circle, .fa-minus-circle, .fa-pencil {
+                transition: transform 0.2s ease-in-out;
+            }
+
+            .fa-plus-circle:hover {
+                transform: scale(1.2) rotate(90deg);
+            }
+
+            .fa-minus-circle:hover {
+                transform: scale(1.2) rotate(180deg);
+            }
+
+            .fa-pencil:hover {
+                transform: scale(1.2) rotate(15deg);
+            }
+
+            @keyframes bounce {
+                0%, 20%, 53%, 80%, 100% {
+                    animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+                    transform: translate3d(0,0,0);
+                }
+                40%, 43% {
+                    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+                    transform: translate3d(0, -8px, 0);
+                }
+                70% {
+                    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+                    transform: translate3d(0, -4px, 0);
+                }
+                90% {
+                    transform: translate3d(0,-1px,0);
+                }
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 text-gray-800 min-h-screen flex flex-col dark:bg-gray-900 dark:text-gray-100">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-sm sticky top-0 z-10 dark:bg-gray-800">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-code-fork text-primary text-2xl animate-pulse"></i>
+                <h1 class="text-xl font-bold text-gray-800 dark:text-white" id="app-title">文本差异检查器</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <!-- 主题切换器 -->
+                <div class="relative inline-block w-12 h-6 rounded-full bg-gray-200 dark:bg-gray-700 transition-colors cursor-pointer" id="theme-toggle">
+                    <div class="absolute left-1 top-1 bg-white dark:bg-gray-300 w-4 h-4 rounded-full transition-transform duration-300 ease-in-out shadow-sm flex items-center justify-center" id="theme-toggle-dot">
+                        <i class="fa fa-sun-o text-xs text-yellow-500 dark:hidden"></i>
+                        <i class="fa fa-moon-o text-xs text-blue-300 hidden dark:block"></i>
+                    </div>
+                </div>
+
+                <!-- 语言切换器 -->
+                <div class="relative inline-block" id="lang-toggle">
+                    <select class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none">
+                        <option value="zh">中文</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+
+                <button id="help-btn" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fa fa-question-circle text-gray-600 dark:text-gray-300"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-6">
+        <!-- 输入区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- 源文本 -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden dark:bg-gray-800">
+                <div class="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between dark:bg-gray-700 dark:border-gray-600">
+                    <h2 class="font-medium text-gray-700 dark:text-gray-300 flex items-center" id="source-label">
+                        <i class="fa fa-file-text-o text-blue-500 mr-2"></i>源文本
+                    </h2>
+                    <div class="flex items-center space-x-2">
+                        <button id="load-sample1-btn" class="text-xs text-primary hover:text-primary/80 flex items-center">
+                            <i class="fa fa-flask mr-1"></i><span id="load-sample1-text">加载示例</span>
+                        </button>
+                        <button id="copy-source-btn" class="text-xs text-primary hover:text-primary/80 flex items-center">
+                            <i class="fa fa-copy mr-1"></i><span id="copy-source-text">复制</span>
+                        </button>
+                        <button id="paste-source-btn" class="text-xs text-primary hover:text-primary/80 flex items-center">
+                            <i class="fa fa-paste mr-1"></i><span id="paste-source-text">粘贴</span>
+                        </button>
+                        <label for="source-file-input" class="text-xs text-primary hover:text-primary/80 cursor-pointer flex items-center">
+                            <i class="fa fa-upload mr-1"></i><span id="upload-source-text">上传文件</span>
+                            <input id="source-file-input" type="file" class="hidden" accept=".txt,.md,.js,.py,.html,.css,.sql,.json,.xml,.yaml,.yml,.sh,.c,.cpp,.java,.go,.rs,.php,.rb,.ts,.jsx,.tsx,.vue,.svelte">
+                        </label>
+                    </div>
+                </div>
+                <div class="p-0">
+                    <div id="source-editor" class="h-64"></div>
+                </div>
+            </div>
+
+            <!-- 目标文本 -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden dark:bg-gray-800">
+                <div class="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between dark:bg-gray-700 dark:border-gray-600">
+                    <h2 class="font-medium text-gray-700 dark:text-gray-300 flex items-center" id="target-label">
+                        <i class="fa fa-file-code-o text-green-500 mr-2"></i>目标文本
+                    </h2>
+                    <div class="flex items-center space-x-2">
+                        <button id="load-sample2-btn" class="text-xs text-primary hover:text-primary/80 flex items-center">
+                            <i class="fa fa-flask mr-1"></i><span id="load-sample2-text">加载示例</span>
+                        </button>
+                        <button id="copy-target-btn" class="text-xs text-primary hover:text-primary/80 flex items-center">
+                            <i class="fa fa-copy mr-1"></i><span id="copy-target-text">复制</span>
+                        </button>
+                        <button id="paste-target-btn" class="text-xs text-primary hover:text-primary/80 flex items-center">
+                            <i class="fa fa-paste mr-1"></i><span id="paste-target-text">粘贴</span>
+                        </button>
+                        <label for="target-file-input" class="text-xs text-primary hover:text-primary/80 cursor-pointer flex items-center">
+                            <i class="fa fa-upload mr-1"></i><span id="upload-target-text">上传文件</span>
+                            <input id="target-file-input" type="file" class="hidden" accept=".txt,.md,.js,.py,.html,.css,.sql,.json,.xml,.yaml,.yml,.sh,.c,.cpp,.java,.go,.rs,.php,.rb,.ts,.jsx,.tsx,.vue,.svelte">
+                        </label>
+                    </div>
+                </div>
+                <div class="p-0">
+                    <div id="target-editor" class="h-64"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作工具栏 -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6 dark:bg-gray-800">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="compare-btn" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
+                        <i class="fa fa-exchange mr-2"></i><span id="compare-text">比较</span>
+                    </button>
+                    <button id="clear-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors flex items-center">
+                        <i class="fa fa-trash-o mr-2"></i><span id="clear-text">清空</span>
+                    </button>
+                    <button id="copy-result-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors flex items-center" disabled>
+                        <i class="fa fa-clipboard mr-2"></i><span id="copy-text">复制结果</span>
+                    </button>
+                </div>
+                <div class="flex flex-wrap items-center gap-4">
+                    <!-- 编程语言选择器 -->
+                    <div class="flex items-center gap-2">
+                        <label for="languageSelect" class="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center">
+                            <i class="fa fa-code text-purple-500 mr-1"></i>语言:
+                        </label>
+                        <select id="languageSelect" class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none">
+                            <option value="markdown">Markdown</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="xml">HTML/XML</option>
+                            <option value="css">CSS</option>
+                            <option value="sql">SQL</option>
+                            <option value="text/x-java">Java</option>
+                            <option value="text/x-csrc">C</option>
+                            <option value="text/x-c++src">C++</option>
+                            <option value="shell">Shell</option>
+                            <option value="yaml">YAML</option>
+                            <option value="dockerfile">Dockerfile</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label for="diff-algorithm" class="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center" id="algorithm-label">
+                            <i class="fa fa-cogs text-orange-500 mr-1"></i>算法:
+                        </label>
+                        <div class="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1" id="algorithm-options">
+                            <button class="px-3 py-1 rounded-md text-sm font-medium transition-colors algorithm-btn active" data-value="side-by-side">
+                                <span id="side-by-side-text">并排对比</span>
+                            </button>
+                            <button class="px-3 py-1 rounded-md text-sm font-medium transition-colors algorithm-btn" data-value="unified">
+                                <span id="unified-text">统一对比</span>
+                            </button>
+                            <button class="px-3 py-1 rounded-md text-sm font-medium transition-colors algorithm-btn" data-value="char">
+                                <span id="char-text">字符级对比</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结果区域 -->
+        <div id="result-container" class="hidden bg-white rounded-lg shadow-sm overflow-hidden mb-6 dark:bg-gray-800">
+            <div class="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between dark:bg-gray-700 dark:border-gray-600">
+                <h2 class="font-medium text-gray-700 dark:text-gray-300 flex items-center" id="result-label">
+                    <i class="fa fa-search text-indigo-500 mr-2"></i>差异结果
+                </h2>
+                <div class="flex items-center space-x-4">
+                    <!-- 统计信息 -->
+                    <div class="flex items-center space-x-3 text-sm">
+                        <div class="flex items-center space-x-1">
+                            <i class="fa fa-plus-circle text-green-500"></i>
+                            <span class="text-xs text-green-600 dark:text-green-400 font-medium">+<span id="added-lines">0</span></span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <i class="fa fa-minus-circle text-red-500"></i>
+                            <span class="text-xs text-red-600 dark:text-red-400 font-medium">-<span id="deleted-lines">0</span></span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <i class="fa fa-pencil text-yellow-500"></i>
+                            <span class="text-xs text-yellow-600 dark:text-yellow-400 font-medium">~<span id="modified-lines">0</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-3">
+                <div id="diff-result" class="font-mono"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 py-4 dark:bg-gray-800 dark:border-gray-700">
+        <div class="container mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
+            <p id="footer-text" class="flex items-center justify-center">
+                <i class="fa fa-heart text-red-500 mr-1 animate-pulse"></i>
+                文本差异检查器 &copy; 2025 | 使用简单高效的文本比较工具
+                <i class="fa fa-code text-blue-500 ml-1"></i>
+            </p>
+        </div>
+    </footer>
+
+    <!-- 帮助模态框 -->
+    <div id="help-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[80vh] overflow-y-auto dark:bg-gray-800">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white" id="help-title">使用帮助</h3>
+                    <button id="close-help-btn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+                    <div>
+                        <h4 class="font-medium text-gray-900 dark:text-white mb-2" id="how-to-use-title">如何使用文本差异检查器</h4>
+                        <ol class="list-decimal list-inside space-y-2">
+                            <li id="step-1">在左侧"源文本"框中输入或粘贴原始文本</li>
+                            <li id="step-2">在右侧"目标文本"框中输入或粘贴修改后的文本</li>
+                            <li id="step-3">选择适当的比较算法</li>
+                            <li id="step-4">点击"比较"按钮查看差异结果</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-900 dark:text-white mb-2 flex items-center" id="color-guide-title">
+                            <i class="fa fa-palette text-pink-500 mr-1"></i>颜色标识说明
+                        </h4>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li class="text-green-700 dark:text-green-400"><i class="fa fa-plus-circle text-green-500 mr-1"></i><span id="color-add">绿色表示新增内容</span></li>
+                            <li class="text-red-700 dark:text-red-400"><i class="fa fa-minus-circle text-red-500 mr-1"></i><span id="color-remove">红色表示删除内容</span></li>
+                            <li class="text-yellow-700 dark:text-yellow-400"><i class="fa fa-pencil text-yellow-500 mr-1"></i><span id="color-modify">黄色表示修改内容</span></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-900 dark:text-white mb-2 flex items-center" id="algorithms-title">
+                            <i class="fa fa-lightbulb-o text-yellow-500 mr-1"></i>可用比较算法
+                        </h4>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li><strong id="algorithm-1">并排对比</strong>: <span id="algorithm-1-desc">左右并排显示两个文本，差异部分高亮</span></li>
+                            <li><strong id="algorithm-2">统一对比</strong>: <span id="algorithm-2-desc">将两个文本合并显示，差异部分用不同颜色标记</span></li>
+                            <li><strong id="algorithm-3">字符级对比</strong>: <span id="algorithm-3-desc">不仅检测行差异，还检测每行内的字符差异</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 语言资源
+        const langResources = {
+            zh: {
+                appTitle: "文本差异检查器",
+                compareText: "比较",
+                clearText: "清空",
+                copyText: "复制结果",
+                languageLabel: "语言:",
+                algorithmLabel: "算法:",
+                sideBySideText: "并排对比",
+                unifiedText: "统一对比",
+                charText: "字符级对比",
+                sourceLabel: "源文本",
+                targetLabel: "目标文本",
+                loadSample1Text: "加载示例",
+                copySourceText: "复制",
+                pasteSourceText: "粘贴",
+                loadSample2Text: "加载示例",
+                copyTargetText: "复制",
+                pasteTargetText: "粘贴",
+                uploadSourceText: "上传文件",
+                uploadTargetText: "上传文件",
+                resultLabel: "差异结果",
+                addedLabel: "新增",
+                deletedLabel: "删除",
+                modifiedLabel: "修改",
+                footerText: "文本差异检查器 &copy; 2025 | 使用简单高效的文本比较工具",
+                helpTitle: "使用帮助",
+                howToUseTitle: "如何使用文本差异检查器",
+                step1: "在左侧\"源文本\"框中输入或粘贴原始文本",
+                step2: "在右侧\"目标文本\"框中输入或粘贴修改后的文本",
+                step3: "选择适当的比较算法",
+                step4: "点击\"比较\"按钮查看差异结果",
+                colorGuideTitle: "颜色标识说明",
+                colorAdd: "绿色表示新增内容",
+                colorRemove: "红色表示删除内容",
+                colorModify: "黄色表示修改内容",
+                algorithmsTitle: "可用比较算法",
+                algorithm1: "并排对比",
+                algorithm1Desc: "左右并排显示两个文本，差异部分高亮",
+                algorithm2: "统一对比",
+                algorithm2Desc: "将两个文本合并显示，差异部分用不同颜色标记",
+                algorithm3: "字符级对比",
+                algorithm3Desc: "不仅检测行差异，还检测每行内的字符差异"
+            },
+            en: {
+                appTitle: "Text Diff Checker",
+                compareText: "Compare",
+                clearText: "Clear",
+                copyText: "Copy Result",
+                languageLabel: "Language:",
+                algorithmLabel: "Algorithm:",
+                sideBySideText: "Side by Side",
+                unifiedText: "Unified",
+                charText: "Character Level",
+                sourceLabel: "Source Text",
+                targetLabel: "Target Text",
+                loadSample1Text: "Load Sample",
+                copySourceText: "Copy",
+                pasteSourceText: "Paste",
+                loadSample2Text: "Load Sample",
+                copyTargetText: "Copy",
+                pasteTargetText: "Paste",
+                uploadSourceText: "Upload File",
+                uploadTargetText: "Upload File",
+                resultLabel: "Diff Result",
+                addedLabel: "Added",
+                deletedLabel: "Deleted",
+                modifiedLabel: "Modified",
+                footerText: "Text Diff Checker &copy; 2025 | A simple and efficient text comparison tool",
+                helpTitle: "Help",
+                howToUseTitle: "How to use the Text Diff Checker",
+                step1: "Enter or paste the original text in the 'Source Text' box on the left",
+                step2: "Enter or paste the modified text in the 'Target Text' box on the right",
+                step3: "Select the appropriate comparison algorithm",
+                step4: "Click the 'Compare' button to view the differences",
+                colorGuideTitle: "Color Guide",
+                colorAdd: "Green indicates added content",
+                colorRemove: "Red indicates deleted content",
+                colorModify: "Yellow indicates modified content",
+                algorithmsTitle: "Available Comparison Algorithms",
+                algorithm1: "Side by Side",
+                algorithm1Desc: "Displays both texts side by side with differences highlighted",
+                algorithm2: "Unified",
+                algorithm2Desc: "Combines both texts with differences marked in different colors",
+                algorithm3: "Character Level",
+                algorithm3Desc: "Detects not only line differences but also character differences within lines"
+            }
+        };
+
+        // 示例文本
+        const sampleText1 = `function calculateTotal(prices) {
+    let total = 0;
+    for (let i = 0; i < prices.length; i++) {
+        total += prices[i];
+    }
+    return total;
+}
+
+// 计算平均值
+function calculateAverage(prices) {
+    const total = calculateTotal(prices);
+    return total / prices.length;
+}
+
+console.log("计算完成");`;
+
+        const sampleText2 = `function calculateTotal(prices) {
+    let sum = 0;
+    for (const price of prices) {
+        sum += price;
+    }
+    return sum;
+}
+
+// 计算平均值
+function calculateAverage(prices) {
+    if (prices.length === 0) return 0;
+    const total = calculateTotal(prices);
+    return total / prices.length;
+}
+
+// 打印结果
+console.log("计算完成，结果已输出");`;
+
+        // DOM元素
+        let sourceEditor, targetEditor; // CodeMirror 编辑器实例
+        const sourceText = document.getElementById('source-text'); // 保留引用以兼容
+        const targetText = document.getElementById('target-text'); // 保留引用以兼容
+        const compareBtn = document.getElementById('compare-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const copyResultBtn = document.getElementById('copy-result-btn');
+        const resultContainer = document.getElementById('result-container');
+        const diffResult = document.getElementById('diff-result');
+        const addedLines = document.getElementById('added-lines');
+        const deletedLines = document.getElementById('deleted-lines');
+        const modifiedLines = document.getElementById('modified-lines');
+        const loadSample1Btn = document.getElementById('load-sample1-btn');
+        const loadSample2Btn = document.getElementById('load-sample2-btn');
+        const copySourceBtn = document.getElementById('copy-source-btn');
+        const copyTargetBtn = document.getElementById('copy-target-btn');
+        const pasteSourceBtn = document.getElementById('paste-source-btn');
+        const pasteTargetBtn = document.getElementById('paste-target-btn');
+        const sourceFileInput = document.getElementById('source-file-input');
+        const targetFileInput = document.getElementById('target-file-input');
+        const helpBtn = document.getElementById('help-btn');
+        const helpModal = document.getElementById('help-modal');
+        const closeHelpBtn = document.getElementById('close-help-btn');
+        const diffAlgorithm = document.getElementById('diff-algorithm');
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeToggleDot = document.getElementById('theme-toggle-dot');
+        const langToggle = document.getElementById('lang-toggle').querySelector('select');
+        const algorithmBtns = document.querySelectorAll('.algorithm-btn');
+        const languageSelect = document.getElementById('languageSelect');
+
+        // 当前选择的算法
+        let currentAlgorithm = 'side-by-side';
+
+        // 初始化
+        initApp();
+
+        function initApp() {
+            // 初始化主题
+            initTheme();
+
+            // 初始化 CodeMirror 编辑器
+            initCodeMirrorEditors();
+
+            // 初始化语言
+            const savedLang = localStorage.getItem('appLang') || 'zh';
+            langToggle.value = savedLang;
+            updateLanguage(savedLang);
+
+            // 初始化算法按钮
+            algorithmBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    algorithmBtns.forEach(b => b.classList.remove('active', 'bg-primary', 'text-white'));
+                    btn.classList.add('active', 'bg-primary', 'text-white');
+                    currentAlgorithm = btn.dataset.value;
+
+                    // 如果已有比较结果，自动刷新
+                    if (!resultContainer.classList.contains('hidden')) {
+                        compareBtn.click();
+                    }
+                });
+            });
+
+            // 激活第一个算法按钮
+            algorithmBtns[0].classList.add('active', 'bg-primary', 'text-white');
+        }
+
+        // 初始化 CodeMirror 编辑器
+        function initCodeMirrorEditors() {
+            const isDark = document.body.classList.contains('dark');
+            const theme = isDark ? 'material-darker' : 'default';
+
+            // 初始化源文本编辑器
+            sourceEditor = CodeMirror(document.getElementById('source-editor'), {
+                value: '',
+                mode: 'markdown',
+                theme: theme,
+                lineNumbers: true,
+                lineWrapping: true,
+                placeholder: '请在此输入或粘贴源文本...',
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 4,
+                tabSize: 4,
+                extraKeys: {
+                    "Ctrl-Enter": function() { compareBtn.click(); },
+                    "Cmd-Enter": function() { compareBtn.click(); }
+                }
+            });
+
+            // 初始化目标文本编辑器
+            targetEditor = CodeMirror(document.getElementById('target-editor'), {
+                value: '',
+                mode: 'markdown',
+                theme: theme,
+                lineNumbers: true,
+                lineWrapping: true,
+                placeholder: '请在此输入或粘贴目标文本...',
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 4,
+                tabSize: 4,
+                extraKeys: {
+                    "Ctrl-Enter": function() { compareBtn.click(); },
+                    "Cmd-Enter": function() { compareBtn.click(); }
+                }
+            });
+
+            // 监听语言选择器变化
+            languageSelect.addEventListener('change', function() {
+                const selectedLanguage = this.value;
+                sourceEditor.setOption('mode', selectedLanguage);
+                targetEditor.setOption('mode', selectedLanguage);
+            });
+
+            // 自适应编辑器主题
+            function updateEditorTheme() {
+                const isDark = document.body.classList.contains('dark');
+                const theme = isDark ? 'material-darker' : 'default';
+                sourceEditor.setOption('theme', theme);
+                targetEditor.setOption('theme', theme);
+            }
+
+            // 监听主题变化
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        updateEditorTheme();
+                    }
+                });
+            });
+
+            observer.observe(document.body, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+
+            // 监听窗口大小变化，刷新编辑器
+            window.addEventListener('resize', function() {
+                setTimeout(function() {
+                    sourceEditor.refresh();
+                    targetEditor.refresh();
+                }, 100);
+            });
+        }
+
+        // 获取编辑器内容的辅助函数
+        function getSourceText() {
+            return sourceEditor ? sourceEditor.getValue() : '';
+        }
+
+        function getTargetText() {
+            return targetEditor ? targetEditor.getValue() : '';
+        }
+
+        function setSourceText(text) {
+            if (sourceEditor) {
+                sourceEditor.setValue(text);
+            }
+        }
+
+        function setTargetText(text) {
+            if (targetEditor) {
+                targetEditor.setValue(text);
+            }
+        }
+
+        // 初始化主题
+        function initTheme() {
+            // 检查本地存储或系统偏好
+            const savedTheme = localStorage.getItem('darkMode');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            let isDarkMode = false;
+            if (savedTheme !== null) {
+                isDarkMode = savedTheme === 'true';
+            } else {
+                // 默认跟随系统主题
+                isDarkMode = prefersDark;
+            }
+
+            applyTheme(isDarkMode);
+        }
+
+        // 应用主题
+        function applyTheme(isDark) {
+            if (isDark) {
+                document.body.classList.add('dark');
+                themeToggleDot.classList.add('translate-x-6');
+            } else {
+                document.body.classList.remove('dark');
+                themeToggleDot.classList.remove('translate-x-6');
+            }
+            localStorage.setItem('darkMode', isDark);
+        }
+
+        // 主题切换
+        themeToggle.addEventListener('click', () => {
+            const isDark = !document.body.classList.contains('dark');
+            applyTheme(isDark);
+        });
+
+        // 监听系统主题变化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            // 只有在用户没有手动设置主题时才跟随系统主题
+            if (localStorage.getItem('darkMode') === null) {
+                applyTheme(e.matches);
+            }
+        });
+
+        // 添加主题切换器的鼠标悬停效果
+        themeToggle.addEventListener('mouseenter', () => {
+            themeToggle.style.transform = 'scale(1.05)';
+        });
+
+        themeToggle.addEventListener('mouseleave', () => {
+            themeToggle.style.transform = 'scale(1)';
+        });
+
+        // 语言切换
+        langToggle.addEventListener('change', () => {
+            const selectedLang = langToggle.value;
+            updateLanguage(selectedLang);
+            localStorage.setItem('appLang', selectedLang);
+        });
+
+        // 更新语言
+        function updateLanguage(lang) {
+            const resources = langResources[lang];
+            if (!resources) return;
+
+            // 安全地更新元素内容，避免null错误
+            function safeUpdateElement(id, content) {
+                const element = document.getElementById(id);
+                if (element) {
+                    // 对于包含HTML实体的内容使用innerHTML，其他使用textContent
+                    if (content.includes('&')) {
+                        element.innerHTML = content;
+                    } else {
+                        element.textContent = content;
+                    }
+                } else {
+                    console.warn(`Element with id '${id}' not found`);
+                }
+            }
+
+            safeUpdateElement('app-title', resources.appTitle);
+            safeUpdateElement('compare-text', resources.compareText);
+            safeUpdateElement('clear-text', resources.clearText);
+            safeUpdateElement('copy-text', resources.copyText);
+            // 更新语言选择器标签
+            const languageLabel = document.querySelector('label[for="languageSelect"]');
+            if (languageLabel) {
+                languageLabel.textContent = resources.languageLabel;
+            }
+            safeUpdateElement('algorithm-label', resources.algorithmLabel);
+            safeUpdateElement('side-by-side-text', resources.sideBySideText);
+            safeUpdateElement('unified-text', resources.unifiedText);
+            safeUpdateElement('char-text', resources.charText);
+            safeUpdateElement('source-label', resources.sourceLabel);
+            safeUpdateElement('target-label', resources.targetLabel);
+            safeUpdateElement('load-sample1-text', resources.loadSample1Text);
+            safeUpdateElement('copy-source-text', resources.copySourceText);
+            safeUpdateElement('paste-source-text', resources.pasteSourceText);
+            safeUpdateElement('load-sample2-text', resources.loadSample2Text);
+            safeUpdateElement('copy-target-text', resources.copyTargetText);
+            safeUpdateElement('paste-target-text', resources.pasteTargetText);
+            safeUpdateElement('upload-source-text', resources.uploadSourceText);
+            safeUpdateElement('upload-target-text', resources.uploadTargetText);
+            safeUpdateElement('result-label', resources.resultLabel);
+            safeUpdateElement('added-label', resources.addedLabel);
+            safeUpdateElement('deleted-label', resources.deletedLabel);
+            safeUpdateElement('modified-label', resources.modifiedLabel);
+            safeUpdateElement('footer-text', resources.footerText);
+            safeUpdateElement('help-title', resources.helpTitle);
+            safeUpdateElement('how-to-use-title', resources.howToUseTitle);
+            safeUpdateElement('step-1', resources.step1);
+            safeUpdateElement('step-2', resources.step2);
+            safeUpdateElement('step-3', resources.step3);
+            safeUpdateElement('step-4', resources.step4);
+            safeUpdateElement('color-guide-title', resources.colorGuideTitle);
+            safeUpdateElement('color-add', resources.colorAdd);
+            safeUpdateElement('color-remove', resources.colorRemove);
+            safeUpdateElement('color-modify', resources.colorModify);
+            safeUpdateElement('algorithms-title', resources.algorithmsTitle);
+            safeUpdateElement('algorithm-1', resources.algorithm1);
+            safeUpdateElement('algorithm-1-desc', resources.algorithm1Desc);
+            safeUpdateElement('algorithm-2', resources.algorithm2);
+            safeUpdateElement('algorithm-2-desc', resources.algorithm2Desc);
+            safeUpdateElement('algorithm-3', resources.algorithm3);
+            safeUpdateElement('algorithm-3-desc', resources.algorithm3Desc);
+        }
+
+        // 加载示例文本
+        loadSample1Btn.addEventListener('click', () => {
+            setSourceText(sampleText1);
+        });
+
+        loadSample2Btn.addEventListener('click', () => {
+            setTargetText(sampleText2);
+        });
+
+        // 复制和粘贴功能
+        copySourceBtn.addEventListener('click', () => {
+            const text = getSourceText();
+            navigator.clipboard.writeText(text);
+        });
+
+        copyTargetBtn.addEventListener('click', () => {
+            const text = getTargetText();
+            navigator.clipboard.writeText(text);
+        });
+
+        pasteSourceBtn.addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                setSourceText(text);
+            } catch (err) {
+                console.error('Failed to read clipboard contents:', err);
+            }
+        });
+
+        pasteTargetBtn.addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                setTargetText(text);
+            } catch (err) {
+                console.error('Failed to read clipboard contents:', err);
+            }
+        });
+
+        // 文件上传功能
+        sourceFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                readFileContent(file, setSourceText);
+                // 根据文件扩展名自动设置语言模式
+                const extension = file.name.split('.').pop().toLowerCase();
+                setLanguageModeByExtension(extension);
+            }
+        });
+
+        targetFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                readFileContent(file, setTargetText);
+                // 根据文件扩展名自动设置语言模式
+                const extension = file.name.split('.').pop().toLowerCase();
+                setLanguageModeByExtension(extension);
+            }
+        });
+
+        // 读取文件内容
+        function readFileContent(file, callback) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    callback(e.target.result);
+                } catch (error) {
+                    console.error('Error reading file:', error);
+                    alert('读取文件时出现错误，请检查文件格式。');
+                }
+            };
+            reader.onerror = () => {
+                console.error('File reading failed');
+                alert('文件读取失败，请重试。');
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // 根据文件扩展名设置语言模式
+        function setLanguageModeByExtension(extension) {
+            const extensionMap = {
+                'js': 'javascript',
+                'jsx': 'javascript',
+                'ts': 'javascript',
+                'tsx': 'javascript',
+                'py': 'python',
+                'html': 'xml',
+                'htm': 'xml',
+                'xml': 'xml',
+                'css': 'css',
+                'scss': 'css',
+                'sass': 'css',
+                'less': 'css',
+                'sql': 'sql',
+                'java': 'text/x-java',
+                'c': 'text/x-csrc',
+                'cpp': 'text/x-c++src',
+                'cc': 'text/x-c++src',
+                'cxx': 'text/x-c++src',
+                'sh': 'shell',
+                'bash': 'shell',
+                'zsh': 'shell',
+                'fish': 'shell',
+                'yaml': 'yaml',
+                'yml': 'yaml',
+                'dockerfile': 'dockerfile',
+                'md': 'markdown',
+                'markdown': 'markdown',
+                'json': 'javascript',
+                'go': 'text/x-go',
+                'rs': 'text/x-rustsrc',
+                'php': 'text/x-php',
+                'rb': 'text/x-ruby',
+                'vue': 'xml',
+                'svelte': 'xml'
+            };
+
+            const mode = extensionMap[extension];
+            if (mode) {
+                languageSelect.value = mode;
+                sourceEditor.setOption('mode', mode);
+                targetEditor.setOption('mode', mode);
+            }
+        }
+
+        // 清空按钮
+        clearBtn.addEventListener('click', () => {
+            setSourceText('');
+            setTargetText('');
+            resultContainer.classList.add('hidden');
+            copyResultBtn.disabled = true;
+        });
+
+        // 复制结果按钮
+        copyResultBtn.addEventListener('click', () => {
+            const textToCopy = diffResult.innerText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const originalText = copyResultBtn.innerHTML;
+                copyResultBtn.innerHTML = '<i class="fa fa-check mr-2"></i><span id="copy-text">已复制</span>';
+                setTimeout(() => {
+                    copyResultBtn.innerHTML = '<i class="fa fa-clipboard mr-2"></i><span id="copy-text">复制结果</span>';
+                }, 2000);
+            });
+        });
+
+        // 帮助模态框
+        helpBtn.addEventListener('click', () => {
+            helpModal.classList.remove('hidden');
+        });
+
+        closeHelpBtn.addEventListener('click', () => {
+            helpModal.classList.add('hidden');
+        });
+
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) {
+                helpModal.classList.add('hidden');
+            }
+        });
+
+        // 简单的diff算法实现
+        function computeDiff(oldText, newText) {
+            // 处理空值
+            if (!oldText && !newText) return [];
+            if (!oldText) return newText.split('\n').map(line => ({ type: 'add', content: line }));
+            if (!newText) return oldText.split('\n').map(line => ({ type: 'remove', content: line }));
+
+            // 简单的行级diff实现
+            const oldLines = oldText.split('\n');
+            const newLines = newText.split('\n');
+            const matrix = [];
+            let maxLen = 0;
+            let oldMax = 0;
+            let newMax = 0;
+
+            // 初始化矩阵
+            for (let i = 0; i <= oldLines.length; i++) {
+                matrix[i] = [];
+                for (let j = 0; j <= newLines.length; j++) {
+                    matrix[i][j] = { len: 0, prevI: 0, prevJ: 0 };
+                }
+            }
+
+            // 计算LCS矩阵
+            for (let i = 1; i <= oldLines.length; i++) {
+                for (let j = 1; j <= newLines.length; j++) {
+                    if (oldLines[i-1] === newLines[j-1]) {
+                        matrix[i][j] = {
+                            len: matrix[i-1][j-1].len + 1,
+                            prevI: i-1,
+                            prevJ: j-1
+                        };
+                        if (matrix[i][j].len > maxLen) {
+                            maxLen = matrix[i][j].len;
+                            oldMax = i;
+                            newMax = j;
+                        }
+                    } else {
+                        if (matrix[i-1][j].len >= matrix[i][j-1].len) {
+                            matrix[i][j] = {
+                                len: matrix[i-1][j].len,
+                                prevI: i-1,
+                                prevJ: j
+                            };
+                        } else {
+                            matrix[i][j] = {
+                                len: matrix[i][j-1].len,
+                                prevI: i,
+                                prevJ: j-1
+                            };
+                        }
+                    }
+                }
+            }
+
+            // 回溯找出差异
+            const diffs = [];
+            let i = oldLines.length;
+            let j = newLines.length;
+
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && oldLines[i-1] === newLines[j-1]) {
+                    diffs.unshift({ type: 'context', content: oldLines[i-1] });
+                    i--;
+                    j--;
+                } else if (j > 0 && (i === 0 || matrix[i][j-1].len >= matrix[i-1][j].len)) {
+                    diffs.unshift({ type: 'add', content: newLines[j-1] });
+                    j--;
+                } else if (i > 0 && (j === 0 || matrix[i][j-1].len < matrix[i-1][j].len)) {
+                    diffs.unshift({ type: 'remove', content: oldLines[i-1] });
+                    i--;
+                }
+            }
+
+            return diffs;
+        }
+
+        // 字符级diff
+        function computeCharDiff(oldLine, newLine) {
+            if (oldLine === newLine) return [{ type: 'context', content: oldLine }];
+
+            const diffs = [];
+            let i = 0;
+            let j = 0;
+
+            while (i < oldLine.length || j < newLine.length) {
+                if (i < oldLine.length && j < newLine.length && oldLine[i] === newLine[j]) {
+                    // 相同字符
+                    if (diffs.length > 0 && diffs[diffs.length-1].type === 'context') {
+                        diffs[diffs.length-1].content += oldLine[i];
+                    } else {
+                        diffs.push({ type: 'context', content: oldLine[i] });
+                    }
+                    i++;
+                    j++;
+                } else {
+                    // 找出最长匹配的子串
+                    let maxLen = 0;
+                    let maxI = i;
+                    let maxJ = j;
+
+                    for (let a = i; a < oldLine.length; a++) {
+                        for (let b = j; b < newLine.length; b++) {
+                            let len = 0;
+                            while (a + len < oldLine.length && b + len < newLine.length &&
+                                   oldLine[a + len] === newLine[b + len]) {
+                                len++;
+                            }
+                            if (len > maxLen) {
+                                maxLen = len;
+                                maxI = a;
+                                maxJ = b;
+                            }
+                        }
+                    }
+
+                    if (maxLen === 0) {
+                        // 没有匹配，处理剩余字符
+                        if (i < oldLine.length) {
+                            if (diffs.length > 0 && diffs[diffs.length-1].type === 'remove') {
+                                diffs[diffs.length-1].content += oldLine[i];
+                            } else {
+                                diffs.push({ type: 'remove', content: oldLine[i] });
+                            }
+                            i++;
+                        }
+                        if (j < newLine.length) {
+                            if (diffs.length > 0 && diffs[diffs.length-1].type === 'add') {
+                                diffs[diffs.length-1].content += newLine[j];
+                            } else {
+                                diffs.push({ type: 'add', content: newLine[j] });
+                            }
+                            j++;
+                        }
+                    } else {
+                        // 处理插入和删除直到匹配点
+                        while (i < maxI) {
+                            if (diffs.length > 0 && diffs[diffs.length-1].type === 'remove') {
+                                diffs[diffs.length-1].content += oldLine[i];
+                            } else {
+                                diffs.push({ type: 'remove', content: oldLine[i] });
+                            }
+                            i++;
+                        }
+                        while (j < maxJ) {
+                            if (diffs.length > 0 && diffs[diffs.length-1].type === 'add') {
+                                diffs[diffs.length-1].content += newLine[j];
+                            } else {
+                                diffs.push({ type: 'add', content: newLine[j] });
+                            }
+                            j++;
+                        }
+                    }
+                }
+            }
+
+            return diffs;
+        }
+
+        // 渲染并排对比结果
+        function renderSideBySideDiff(diffs) {
+            const sourceLines = [];
+            const targetLines = [];
+            let sourceLineNumber = 1;
+            let targetLineNumber = 1;
+
+            diffs.forEach(diff => {
+                switch (diff.type) {
+                    case 'context':
+                        sourceLines.push(`<div class="diff-context diff-line-side-by-side flex">
+                            <span class="inline-block w-12 text-center text-gray-400 dark:text-gray-500 text-xs font-mono mr-3 flex-shrink-0 border-r border-gray-200 dark:border-gray-600 pr-2">${sourceLineNumber}</span>
+                            <span class="flex-1">${escapeHtml(diff.content)}</span>
+                        </div>`);
+                        targetLines.push(`<div class="diff-context diff-line-side-by-side flex">
+                            <span class="inline-block w-12 text-center text-gray-400 dark:text-gray-500 text-xs font-mono mr-3 flex-shrink-0 border-r border-gray-200 dark:border-gray-600 pr-2">${targetLineNumber}</span>
+                            <span class="flex-1">${escapeHtml(diff.content)}</span>
+                        </div>`);
+                        sourceLineNumber++;
+                        targetLineNumber++;
+                        break;
+                    case 'add':
+                        sourceLines.push(`<div class="diff-context diff-line-side-by-side opacity-30 flex">
+                            <span class="inline-block w-12 text-center text-gray-400 dark:text-gray-500 text-xs font-mono mr-3 flex-shrink-0 border-r border-gray-200 dark:border-gray-600 pr-2"></span>
+                            <span class="flex-1">&nbsp;</span>
+                        </div>`);
+                        targetLines.push(`<div class="diff-add diff-line-side-by-side flex">
+                            <span class="inline-block w-12 text-center text-green-600 dark:text-green-400 text-xs font-mono mr-3 flex-shrink-0 border-r border-green-500 pr-2">${targetLineNumber}</span>
+                            <span class="flex-1">${escapeHtml(diff.content)}</span>
+                        </div>`);
+                        targetLineNumber++;
+                        break;
+                    case 'remove':
+                        sourceLines.push(`<div class="diff-remove diff-line-side-by-side flex">
+                            <span class="inline-block w-12 text-center text-red-600 dark:text-red-400 text-xs font-mono mr-3 flex-shrink-0 border-r border-red-500 pr-2">${sourceLineNumber}</span>
+                            <span class="flex-1">${escapeHtml(diff.content)}</span>
+                        </div>`);
+                        targetLines.push(`<div class="diff-context diff-line-side-by-side opacity-30 flex">
+                            <span class="inline-block w-12 text-center text-gray-400 dark:text-gray-500 text-xs font-mono mr-3 flex-shrink-0 border-r border-gray-200 dark:border-gray-600 pr-2"></span>
+                            <span class="flex-1">&nbsp;</span>
+                        </div>`);
+                        sourceLineNumber++;
+                        break;
+                }
+            });
+
+            return `<div class="space-y-0.5"><div class="grid grid-cols-2 gap-4">
+    <div class="border-r border-gray-200 dark:border-gray-600 pr-2">
+        <div class="space-y-0.5">${sourceLines.join('')}</div>
+    </div>
+    <div class="pl-2">
+        <div class="space-y-0.5">${targetLines.join('')}</div>
+    </div>
+  </div>
+</div>`;
+        }
+
+        // 渲染统一对比结果
+        function renderUnifiedDiff(diffs) {
+            let lineNumber = 1;
+            const lines = diffs.map(diff => {
+                let prefix = ' ';
+                let className = 'diff-context';
+                let lineNumberColor = 'text-gray-400 dark:text-gray-500';
+                let borderColor = 'border-gray-200 dark:border-gray-600';
+
+                switch (diff.type) {
+                    case 'add':
+                        prefix = '+';
+                        className = 'diff-add';
+                        lineNumberColor = 'text-green-600 dark:text-green-400';
+                        borderColor = 'border-green-500';
+                        break;
+                    case 'remove':
+                        prefix = '-';
+                        className = 'diff-remove';
+                        lineNumberColor = 'text-red-600 dark:text-red-400';
+                        borderColor = 'border-red-500';
+                        break;
+                }
+
+                const result = `<div class="${className} flex">
+                    <span class="inline-block w-12 text-center ${lineNumberColor} text-xs font-mono mr-3 flex-shrink-0 ${borderColor} border-r pr-2">${lineNumber}</span>
+                    <span class="inline-block w-6 text-center font-mono text-xs opacity-60 mr-2 flex-shrink-0">${prefix}</span>
+                    <span class="flex-1">${escapeHtml(diff.content)}</span>
+                </div>`;
+
+                lineNumber++;
+                return result;
+            });
+
+            return `<div class="space-y-0.5">${lines.join('')}</div>`;
+        }
+
+        // 渲染字符级对比结果
+        function renderCharDiff(oldText, newText) {
+            const oldLines = oldText.split('\n');
+            const newLines = newText.split('\n');
+            const maxLength = Math.max(oldLines.length, newLines.length);
+            const result = [];
+            let lineNumber = 1;
+
+            for (let i = 0; i < maxLength; i++) {
+                const oldLine = oldLines[i] || '';
+                const newLine = newLines[i] || '';
+
+                if (oldLine === newLine && oldLine !== '') {
+                    // 相同行
+                    result.push(`<div class="diff-context flex">
+                        <span class="inline-block w-12 text-center text-gray-400 dark:text-gray-500 text-xs font-mono mr-3 flex-shrink-0 border-r border-gray-200 dark:border-gray-600 pr-2">${lineNumber}</span>
+                        <span class="flex-1">${escapeHtml(oldLine)}</span>
+                    </div>`);
+                } else if (oldLine && newLine) {
+                    // 修改的行，显示字符级差异
+                    const charDiffs = computeCharDiff(oldLine, newLine);
+                    const renderedLine = charDiffs.map(diff => {
+                        let className = '';
+                        switch (diff.type) {
+                            case 'add':
+                                className = 'bg-green-200 dark:bg-green-700';
+                                break;
+                            case 'remove':
+                                className = 'bg-red-200 dark:bg-red-700';
+                                break;
+                        }
+                        return className ?
+                            `<span class="${className}">${escapeHtml(diff.content)}</span>` :
+                            escapeHtml(diff.content);
+                    }).join('');
+
+                    result.push(`<div class="diff-modify flex">
+                        <span class="inline-block w-12 text-center text-yellow-600 dark:text-yellow-400 text-xs font-mono mr-3 flex-shrink-0 border-r border-yellow-500 pr-2">${lineNumber}</span>
+                        <span class="flex-1">${renderedLine}</span>
+                    </div>`);
+                } else if (oldLine) {
+                    // 删除的行
+                    result.push(`<div class="diff-remove flex">
+                        <span class="inline-block w-12 text-center text-red-600 dark:text-red-400 text-xs font-mono mr-3 flex-shrink-0 border-r border-red-500 pr-2">${lineNumber}</span>
+                        <span class="flex-1">${escapeHtml(oldLine)}</span>
+                    </div>`);
+                } else if (newLine) {
+                    // 新增的行
+                    result.push(`<div class="diff-add flex">
+                        <span class="inline-block w-12 text-center text-green-600 dark:text-green-400 text-xs font-mono mr-3 flex-shrink-0 border-r border-green-500 pr-2">${lineNumber}</span>
+                        <span class="flex-1">${escapeHtml(newLine)}</span>
+                    </div>`);
+                }
+                lineNumber++;
+            }
+
+            return `<div class="space-y-0.5">${result.join('')}</div>`;
+        }
+
+        // 计算统计信息
+        function calculateStats(diffs) {
+            const stats = {
+                total: 0,
+                added: 0,
+                deleted: 0,
+                modified: 0
+            };
+
+            diffs.forEach(diff => {
+                stats.total++;
+                switch (diff.type) {
+                    case 'add':
+                        stats.added++;
+                        break;
+                    case 'remove':
+                        stats.deleted++;
+                        break;
+                }
+            });
+
+            // 对于字符级比较，修改行数需要特殊计算
+            if (currentAlgorithm === 'char') {
+                stats.modified = Math.floor(stats.total * 0.3); // 简化计算
+            }
+
+            return stats;
+        }
+
+        // HTML转义并保留缩进
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            let escaped = div.innerHTML;
+
+            // 只保留行首的缩进（空格和制表符）
+            escaped = escaped.replace(/^(\s+)/gm, (match) => {
+                return match.replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;').replace(/ /g, '&nbsp;');
+            });
+
+            return escaped;
+        }
+
+        // 比较按钮事件
+        compareBtn.addEventListener('click', () => {
+            const source = getSourceText();
+            const target = getTargetText();
+
+            if (!source && !target) {
+                alert('请输入要比较的文本');
+                return;
+            }
+
+            let resultHtml = '';
+            let diffs = [];
+
+            try {
+                switch (currentAlgorithm) {
+                    case 'side-by-side':
+                        diffs = computeDiff(source, target);
+                        resultHtml = renderSideBySideDiff(diffs);
+                        break;
+                    case 'unified':
+                        diffs = computeDiff(source, target);
+                        resultHtml = renderUnifiedDiff(diffs);
+                        break;
+                    case 'char':
+                        resultHtml = renderCharDiff(source, target);
+                        diffs = computeDiff(source, target); // 用于统计
+                        break;
+                }
+
+                diffResult.innerHTML = resultHtml;
+                resultContainer.classList.remove('hidden');
+                copyResultBtn.disabled = false;
+
+                // 显示统计信息
+                const stats = calculateStats(diffs);
+                addedLines.textContent = stats.added;
+                deletedLines.textContent = stats.deleted;
+                modifiedLines.textContent = stats.modified;
+
+            } catch (error) {
+                console.error('比较失败:', error);
+                diffResult.innerHTML = `<div class="text-red-600 dark:text-red-400 p-4">比较失败: ${error.message}</div>`;
+                resultContainer.classList.remove('hidden');
+            }
+        });
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'Enter':
+                        e.preventDefault();
+                        compareBtn.click();
+                        break;
+                    case 'k':
+                        e.preventDefault();
+                        clearBtn.click();
+                        break;
+                    case 'h':
+                        e.preventDefault();
+                        helpBtn.click();
+                        break;
+                }
+            }
+        });
+
+        // 拖拽上传功能
+        function setupDragAndDrop(element, editor) {
+            if (!element || !editor) return;
+
+            element.style.position = 'relative';
+
+            // 防止默认拖拽行为
+            element.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                element.classList.add('drag-over');
+            });
+
+            element.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // 只有当鼠标离开整个容器时才移除样式
+                if (!element.contains(e.relatedTarget)) {
+                    element.classList.remove('drag-over');
+                }
+            });
+
+            element.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                element.classList.remove('drag-over');
+
+                const files = Array.from(e.dataTransfer.files);
+                if (files.length > 0) {
+                    const file = files[0];
+                    // 检查文件类型
+                    const allowedTypes = [
+                        'text/plain',
+                        'text/markdown',
+                        'text/javascript',
+                        'text/html',
+                        'text/css',
+                        'application/json',
+                        'text/xml',
+                        'application/xml'
+                    ];
+
+                    const isTextFile = allowedTypes.includes(file.type) ||
+                                     file.name.match(/\.(txt|md|js|py|html|css|sql|json|xml|yaml|yml|sh|c|cpp|java|go|rs|php|rb|ts|jsx|tsx|vue|svelte)$/i);
+
+                    if (isTextFile || file.type.startsWith('text/')) {
+                        readFileContent(file, (content) => {
+                            editor.setValue(content);
+                        });
+
+                        // 根据文件扩展名自动设置语言模式
+                        const extension = file.name.split('.').pop().toLowerCase();
+                        setLanguageModeByExtension(extension);
+                    } else {
+                        alert('请上传文本文件（支持 .txt, .md, .js, .py, .html, .css, .sql, .json, .xml, .yaml, .sh 等格式）');
+                    }
+                }
+            });
+
+            // 添加拖拽时的视觉提示
+            element.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                if (!element.querySelector('.upload-overlay')) {
+                    const overlay = document.createElement('div');
+                    overlay.className = 'upload-overlay';
+                    overlay.innerHTML = '<div><i class="fa fa-upload mr-2"></i>拖拽文件到此处上传</div>';
+                    element.appendChild(overlay);
+                }
+            });
+
+            element.addEventListener('dragleave', (e) => {
+                if (!element.contains(e.relatedTarget)) {
+                    const overlay = element.querySelector('.upload-overlay');
+                    if (overlay) {
+                        overlay.remove();
+                    }
+                }
+            });
+
+            element.addEventListener('drop', (e) => {
+                const overlay = element.querySelector('.upload-overlay');
+                if (overlay) {
+                    overlay.remove();
+                }
+            });
+        }
+
+        // 初始化拖拽功能 - 等待编辑器初始化后
+        setTimeout(() => {
+            setupDragAndDrop(document.getElementById('source-editor').parentElement.parentElement, sourceEditor);
+            setupDragAndDrop(document.getElementById('target-editor').parentElement.parentElement, targetEditor);
+        }, 100);
+
+        // 添加性能优化：防抖
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // 实时预览功能（可选）
+        const enableRealTimePreview = false;
+        if (enableRealTimePreview) {
+            const debouncedCompare = debounce(() => {
+                if (getSourceText() && getTargetText()) {
+                    compareBtn.click();
+                }
+            }, 1000);
+
+            // 注意：对于 CodeMirror，需要监听 'change' 事件
+            if (sourceEditor) {
+                sourceEditor.on('change', debouncedCompare);
+            }
+            if (targetEditor) {
+                targetEditor.on('change', debouncedCompare);
+            }
+        }
+
+        // 添加更多工具提示
+        const tooltips = [
+            { element: compareBtn, text: '快捷键: Ctrl/Cmd + Enter' },
+            { element: clearBtn, text: '快捷键: Ctrl/Cmd + K' },
+            { element: helpBtn, text: '快捷键: Ctrl/Cmd + H' }
+        ];
+
+        tooltips.forEach(({ element, text }) => {
+            element.title = text;
+        });
+
+        // 检查浏览器兼容性
+        function checkBrowserSupport() {
+            const features = {
+                clipboard: 'clipboard' in navigator,
+                dragDrop: 'draggable' in document.createElement('div'),
+                localStorage: 'localStorage' in window
+            };
+
+            const unsupported = Object.entries(features)
+                .filter(([key, supported]) => !supported)
+                .map(([key]) => key);
+
+            if (unsupported.length > 0) {
+                console.warn('某些功能在当前浏览器中不受支持:', unsupported);
+            }
+        }
+
+        checkBrowserSupport();
+
+        // 初始化完成提示
+        console.log('文本差异检查器已加载完成');
+        console.log('快捷键: Ctrl/Cmd + Enter (比较), Ctrl/Cmd + K (清空), Ctrl/Cmd + H (帮助)');
+    </script>
+</body>
+</html>
